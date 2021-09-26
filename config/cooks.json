@@ -1,0 +1,28 @@
+{
+  "cooks": [
+    {
+      "rank": 3,
+      "proficiency": 3,
+      "name": "Gordon Ramsay",
+      "catch_phrase": "Hey, panini head, are you listening to me?"
+    },
+    {
+      "rank": 3,
+      "proficiency": 3,
+      "name": "Alexandr Vdovicenco",
+      "catch_phrase": "Write me a component diagram"
+    },
+    {
+      "rank": 2,
+      "proficiency": 3,
+      "name": "Dinu Turcanu",
+      "catch_phrase": "Enginerii creaza viitorul"
+    },
+    {
+      "rank": 3,
+      "proficiency": 4,
+      "name": "Viorel Bostan",
+      "catch_phrase": "*Proceeds to solve calculus*"
+    }
+  ]
+}
