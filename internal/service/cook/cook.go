@@ -17,11 +17,19 @@ type Cook struct {
 	statusMutex sync.Mutex
 	status State
 
+	idMutex sync.Mutex
 	id int
 	rank int
 	proficiency int
 	name string
 	phrase string
+}
+
+func (c *Cook) GetID() int {
+	c.idMutex.Lock()
+	defer c.idMutex.Unlock()
+
+	return c.id
 }
 
 func (c *Cook) GetState() State{
@@ -44,7 +52,7 @@ func (c *Cook) Prepare(food entity.Food,foodID int, idChannel chan<- int) {
 	c.SetState(Free)
 }
 
-func CookEntityToService(cookEntities []entity.Cook) []Cook {
+func EntityToService(cookEntities []entity.Cook) []Cook {
 	var response []Cook
 
 	for idx, val := range cookEntities {

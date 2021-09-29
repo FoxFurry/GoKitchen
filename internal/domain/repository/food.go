@@ -24,7 +24,7 @@ func GetFoods() []entity.Food{
 		byteValue, _ := ioutil.ReadAll(jsonFile)
 
 		if err := json.Unmarshal(byteValue, &foodsHolder); err != nil {
-			logger.LogPanicF("Could not unmarshal foods config: %v", err)
+			logger.LogPanicf("Could not unmarshal foods config: %v", err)
 		}
 
 		foods = foodsHolder.Data
