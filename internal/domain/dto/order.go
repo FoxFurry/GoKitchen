@@ -9,5 +9,6 @@ type Order struct {
 	Items   []int `json:"items"`
 	Priority int `json:"priority"`
 	MaxWait int `json:"max_wait"`
+	MaxOrderRank int `json:"-"`
 	PickUpTime time.Time `json:"pick_up_time"`
 }
