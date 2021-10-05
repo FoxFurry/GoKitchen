@@ -1,16 +1,12 @@
 package controller
 
 import (
-	"bytes"
-	"encoding/json"
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/http/httperr"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/service/supervisor"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"log"
 	"net/http"
 )
 
@@ -20,6 +16,7 @@ type IController interface {
 	menu(c *gin.Context)
 	order(c *gin.Context)
 	RegisterKitchenRoutes(c *gin.Engine)
+	Initialize()
 }
 
 type KitchenController struct {
@@ -32,12 +29,16 @@ func NewKitchenController() IController {
 	}
 }
 
+func (ctrl *KitchenController) Initialize(){
+	ctrl.super.Initialize()
+}
+
 func (ctrl *KitchenController) menu(c *gin.Context){
 	var response dto.Menu
 
 	response.Items = repository.GetFoods()
 	response.ItemsCount = len(response.Items)
-
+	logger.LogMessageF("Menu request was fulfilled: %d items available", response.ItemsCount)
 	c.JSON(http.StatusOK, response)
 }
 
@@ -49,10 +50,14 @@ func (ctrl *KitchenController) order(c *gin.Context){
 		return
 	}
 
-	log.Printf("%+v", currentOrder)
-	ctrl.super.PrepareOrder(currentOrder)
+	logger.LogMessageF("Got a new order: %v", currentOrder.Items)
+	ctrl.super.AddOrder(currentOrder)
 
-	logger.LogMessageF("Order %v completed", currentOrder.OrderID)
+	return
+}
+
+/*
+logger.LogMessageF("Order %v completed", currentOrder.OrderID)
 
 	resp := dto.Distribution{}
 	resp.TableID = currentOrder.TableID
@@ -65,5 +70,4 @@ func (ctrl *KitchenController) order(c *gin.Context){
 
 	http.Post(viper.GetString("dining_host") + "/distribution", contentType, bytes.NewReader(jsonBody))
 
-	return
-}
+ */
