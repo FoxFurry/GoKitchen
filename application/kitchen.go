@@ -22,7 +22,6 @@ func CreateApp() IApp {
 	appHandler := gin.New()
 
 	ctrl := controller.NewKitchenController()
-
 	ctrl.RegisterKitchenRoutes(appHandler)
 
 	app := kitchenApp{
@@ -31,16 +30,12 @@ func CreateApp() IApp {
 			Handler:           appHandler,
 		},
 	}
+	ctrl.Initialize()
 
 	return &app
 }
 
-func (d *kitchenApp) initialize(){
-
-}
-
 func (d *kitchenApp) Start() {
-	d.initialize()
 	logger.LogMessage("Starting kitchen server")
 
 	if err := d.server.ListenAndServe(); err != http.ErrServerClosed {
