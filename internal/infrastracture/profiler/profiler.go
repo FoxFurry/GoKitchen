@@ -7,7 +7,7 @@ import (
 )
 
 func StartProfiler() {
-	logger.LogMessage("Starting profiler server. Access localhost:6060 for more data!")
+	logger.LogMessage("Starting kitchen profiler. Access http://localhost:6060/debug/pprof/ for more useful data!")
 	go func() {
 		logger.LogError(http.ListenAndServe("localhost:6060", nil).Error())
 	}()
