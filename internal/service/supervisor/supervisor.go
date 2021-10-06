@@ -1,11 +1,15 @@
 package supervisor
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/entity"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/service/cook"
+	"github.com/spf13/viper"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -24,13 +28,29 @@ type KitchenSupervisor struct {
 
 func NewKitchenSupervisor() ISupervisor {
 	return &KitchenSupervisor{
-		cooks: cook.CookEntityToService(repository.GetCooks()),
+		cooks: cook.EntityToService(repository.GetCooks()),
 		foods: repository.GetFoods(),
 	}
 }
 
 func (s *KitchenSupervisor) PrepareOrder(order dto.Order) {
-	logger.LogMessageF("Preparing order %v", order.OrderID)
+	s.prep(order)
+	logger.LogSuperF("Order %v completed", order.OrderID)
+
+	resp := dto.Distribution{}
+	resp.TableID = order.TableID
+
+	jsonBody, err := json.Marshal(resp)
+	if err != nil {
+		logger.LogPanic(err.Error())
+	}
+	contentType := "application/json"
+
+	http.Post(viper.GetString("dining_host") + "/distribution", contentType, bytes.NewReader(jsonBody))
+}
+
+func (s *KitchenSupervisor) prep(order dto.Order) {
+	logger.LogSuperF("Got order %v", order.OrderID)
 
 	itemChan := make(chan int, 1)
 
@@ -64,11 +84,13 @@ func (s *KitchenSupervisor) PrepareItem(item entity.Food, itemIdx int, itemChan 
 		currCook = s.FindCook()
 		time.Sleep(time.Second)
 	}
-	logger.LogMessageF("Found cook")
+
+	cookID := currCook.GetID()
+	logger.LogCookF(cookID, "Preparing item %d", item.ID)
 
 	currCook.Prepare(item, itemIdx, itemChan)
 
-	logger.LogMessageF("Item %d is ready", item.ID)
+	logger.LogCookF(cookID, "Item %d is ready", item.ID)
 }
 
 

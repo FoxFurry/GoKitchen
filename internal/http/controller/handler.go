@@ -1,16 +1,11 @@
 package controller
 
 import (
-	"bytes"
-	"encoding/json"
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/http/httperr"
-	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/service/supervisor"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"log"
 	"net/http"
 )
 
@@ -49,21 +44,7 @@ func (ctrl *KitchenController) order(c *gin.Context){
 		return
 	}
 
-	log.Printf("%+v", currentOrder)
-	ctrl.super.PrepareOrder(currentOrder)
-
-	logger.LogMessageF("Order %v completed", currentOrder.OrderID)
-
-	resp := dto.Distribution{}
-	resp.TableID = currentOrder.TableID
-
-	jsonBody, err := json.Marshal(resp)
-	if err != nil {
-		log.Panic(err)
-	}
-	contentType := "application/json"
-
-	http.Post(viper.GetString("dining_host") + "/distribution", contentType, bytes.NewReader(jsonBody))
+	go ctrl.super.PrepareOrder(currentOrder)
 
 	return
 }

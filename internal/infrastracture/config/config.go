@@ -1,8 +1,8 @@
 package config
 
 import (
+	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/spf13/viper"
-	"log"
 )
 
 func LoadConfig(){
@@ -12,6 +12,6 @@ func LoadConfig(){
 	viper.SetConfigType("json")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Panicf("Could not read config file: %v", err)
+		logger.LogPanicf("Could not read config file: %v", err)
 	}
 }
