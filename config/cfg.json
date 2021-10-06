@@ -1,5 +1,5 @@
 {
   "log_level": 3,
   "kitchen_host": ":8081",
-  "dining_host": "http://dining:8080"
+  "dining_host": "http://localhost:8080"
 }
