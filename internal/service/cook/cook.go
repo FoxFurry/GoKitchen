@@ -2,6 +2,7 @@ package cook
 
 import (
 	"github.com/foxfurry/go_kitchen/internal/domain/entity"
+	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"sync"
 	"time"
 )
@@ -19,10 +20,11 @@ type Cook struct {
 
 	idMutex sync.Mutex
 	id int
-	rank int
-	proficiency int
-	name string
-	phrase string
+
+	currentItemsMutex sync.Mutex
+	currentItems int
+
+	entity.Cook
 }
 
 func (c *Cook) GetID() int {
@@ -45,11 +47,11 @@ func (c *Cook) SetState(newState State) {
 }
 
 func (c *Cook) Prepare(food entity.Food,foodID int, idChannel chan<- int) {
-	c.SetState(Busy)
+	c.itemsDecr()
 	time.Sleep(time.Second * time.Duration(food.PreparationTime))
 
-	idChannel<-foodID
-	c.SetState(Free)
+	idChannel<-foodID	// send an item prepared signal
+	c.itemsIncr()
 }
 
 func EntityToService(cookEntities []entity.Cook) []Cook {
@@ -59,13 +61,29 @@ func EntityToService(cookEntities []entity.Cook) []Cook {
 		response = append(response, Cook{
 			status:      Free,
 			id:          idx,
-			rank:        val.Rank,
-			proficiency: val.Proficiency,
-			name:        val.Name,
-			phrase:      val.CatchPhrase,
+			Cook: val,
+			currentItems: val.Proficiency,
 		})
 	}
 
 	return response
+}
+
+func (c *Cook) itemsIncr(){
+	c.currentItemsMutex.Lock()
+	defer c.currentItemsMutex.Unlock()
+	c.SetState(Free)
+	c.currentItems++
+}
+
+func (c *Cook) itemsDecr(){
+	c.currentItemsMutex.Lock()
+	defer c.currentItemsMutex.Unlock()
+	if c.currentItems < 1 {
+		logger.LogErrorF("Trying to decrement already zero items!")
+	}else if c.currentItems == 1 {
+		c.SetState(Busy)
+	}
+	c.currentItems--
 }
 

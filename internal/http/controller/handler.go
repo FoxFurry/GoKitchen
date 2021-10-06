@@ -15,6 +15,7 @@ type IController interface {
 	menu(c *gin.Context)
 	order(c *gin.Context)
 	RegisterKitchenRoutes(c *gin.Engine)
+	Initialize()
 }
 
 type KitchenController struct {
@@ -27,12 +28,16 @@ func NewKitchenController() IController {
 	}
 }
 
+func (ctrl *KitchenController) Initialize(){
+	ctrl.super.Initialize()
+}
+
 func (ctrl *KitchenController) menu(c *gin.Context){
 	var response dto.Menu
 
 	response.Items = repository.GetFoods()
 	response.ItemsCount = len(response.Items)
-
+	logger.LogMessageF("Menu request was fulfilled: %d items available", response.ItemsCount)
 	c.JSON(http.StatusOK, response)
 }
 
@@ -44,7 +49,25 @@ func (ctrl *KitchenController) order(c *gin.Context){
 		return
 	}
 
-	go ctrl.super.PrepareOrder(currentOrder)
+
+	logger.LogMessageF("Got a new order: %v", currentOrder.Items)
+	ctrl.super.AddOrder(currentOrder)
 
 	return
 }
+
+/*
+logger.LogMessageF("Order %v completed", currentOrder.OrderID)
+
+	resp := dto.Distribution{}
+	resp.TableID = currentOrder.TableID
+
+	jsonBody, err := json.Marshal(resp)
+	if err != nil {
+		log.Panic(err)
+	}
+	contentType := "application/json"
+
+	http.Post(viper.GetString("dining_host") + "/distribution", contentType, bytes.NewReader(jsonBody))
+
+ */
