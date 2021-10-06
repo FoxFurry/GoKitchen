@@ -4,14 +4,6 @@ import (
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 )
 
-type IQueue interface {
-	Less(i, j int) bool
-	Swap(i, j int)
-	Len() int
-	Push(x dto.Order)
-	Pop() dto.Order
-}
-
 type Item struct {
 	dto.Order
 	index int
@@ -31,21 +23,21 @@ func (pq priorityQueue) Swap(i, j int) {
 
 func (pq priorityQueue) Len() int { return len(pq) }
 
-func (pq *priorityQueue) Push(x dto.Order) {
+func (pq *priorityQueue) Push(x interface{}) {
 	n := len(*pq)
 	item := &Item{
-		Order: x,
+		Order: x.(dto.Order),
 		index: n,
 	}
 	*pq = append(*pq, item)
 }
 
-func (pq *priorityQueue) Pop() dto.Order {
+func (pq *priorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
 	old[n-1] = nil  // avoid memory leak
 	item.index = -1 // for safety
 	*pq = old[0 : n-1]
-	return item.Order
+	return item
 }
