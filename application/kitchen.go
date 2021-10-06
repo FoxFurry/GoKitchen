@@ -39,13 +39,13 @@ func (d *kitchenApp) Start() {
 	logger.LogMessage("Starting kitchen server")
 
 	if err := d.server.ListenAndServe(); err != http.ErrServerClosed {
-		logger.LogPanicF("Unexpected error while running server: %v", err)
+		logger.LogPanicf("Unexpected error while running server: %v", err)
 	}
 }
 
 func (d *kitchenApp) Shutdown(ctx context.Context) {
 	if err := d.server.Shutdown(ctx); err != nil {
-		logger.LogPanicF("Unexpected error while closing server: %v", err)
+		logger.LogPanicf("Unexpected error while closing server: %v", err)
 	}
 	logger.LogMessage("Server terminated successfully")
 }

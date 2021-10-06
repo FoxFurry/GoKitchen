@@ -1,16 +1,12 @@
 package supervisor
 
 import (
-	"bytes"
-	"encoding/json"
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/entity"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/priorityqueue"
 	"github.com/foxfurry/go_kitchen/internal/service/cook"
-	"github.com/spf13/viper"
-	"net/http"
 	"sync"
 	"time"
 )

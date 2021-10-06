@@ -4,6 +4,7 @@ import (
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/http/httperr"
+	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/service/supervisor"
 	"github.com/gin-gonic/gin"
 	"net/http"
