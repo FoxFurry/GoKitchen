@@ -18,7 +18,7 @@ type kitchenApp struct {
 	server *http.Server
 }
 
-func CreateApp() IApp {
+func Create(ctx context.Context) IApp {
 	appHandler := gin.New()
 
 	ctrl := controller.NewKitchenController()
@@ -30,7 +30,7 @@ func CreateApp() IApp {
 			Handler:           appHandler,
 		},
 	}
-	ctrl.Initialize()
+	ctrl.Initialize(ctx)
 
 	return &app
 }
@@ -39,13 +39,13 @@ func (d *kitchenApp) Start() {
 	logger.LogMessage("Starting kitchen server")
 
 	if err := d.server.ListenAndServe(); err != http.ErrServerClosed {
-		logger.LogPanicf("Unexpected error while running server: %v", err)
+		logger.LogPanicF("Unexpected error while running server: %v", err)
 	}
 }
 
 func (d *kitchenApp) Shutdown(ctx context.Context) {
 	if err := d.server.Shutdown(ctx); err != nil {
-		logger.LogPanicf("Unexpected error while closing server: %v", err)
+		logger.LogPanicF("Unexpected error while closing server: %v", err)
 	}
 	logger.LogMessage("Server terminated successfully")
 }
