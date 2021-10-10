@@ -1,30 +1,32 @@
 package supervisor
 
 import (
+	"context"
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/entity"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/priorityqueue"
 	"github.com/foxfurry/go_kitchen/internal/service/cook"
+	"github.com/foxfurry/go_kitchen/internal/service/supervisor/gateway"
 	"sync"
 	"time"
 )
 
 type ISupervisor interface {
 	AddOrder(order dto.Order)
-	Initialize()
+	Initialize(ctx context.Context)
 }
 
 type KitchenSupervisor struct {
 	queueMutex sync.Mutex
-	queue priorityqueue.IQueue
+	queue      priorityqueue.IQueue
 
 	cooksMutex sync.Mutex
-	cooks []cook.Cook
+	cooks      []cook.Cook
 
 	foodsMutex sync.Mutex
-	foods []entity.Food
+	foods      []entity.Food
 }
 
 func NewKitchenSupervisor() ISupervisor {
@@ -40,23 +42,26 @@ func (s *KitchenSupervisor) AddOrder(order dto.Order) {
 	s.queue.Push(order)
 }
 
-
-func (s *KitchenSupervisor) Initialize(){
+func (s *KitchenSupervisor) Initialize(ctx context.Context) {
 	logger.LogMessage("Starting kitchen supervisor")
 	s.queue = priorityqueue.NewOrderQueue()
-	go s.WatchOrderQueue()
+	go s.WatchOrderQueue(ctx)
 }
 
-func (s *KitchenSupervisor) WatchOrderQueue() {
+func (s *KitchenSupervisor) WatchOrderQueue(ctx context.Context) {
 	for {
-		s.queueMutex.Lock()
-		for idx := 0; idx < s.queue.Len(); idx++{
-			if s.findCook(s.queue.Check(idx).MaxOrderRank) != nil {	// We have an free cook for current priority
-				go s.prepareOrder(s.queue.Remove(idx))
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+			s.queueMutex.Lock()
+			for idx := 0; idx < s.queue.Len(); idx++ {
+				if s.findCook(s.queue.Check(idx).MaxOrderRank) != nil { // Look for free cook for current priority
+					go s.prepareOrder(s.queue.Remove(idx), ctx)
+				}
 			}
+			s.queueMutex.Unlock()
 		}
-		s.queueMutex.Unlock()
-		time.Sleep(time.Second * 1) // Every second we iterate through
 	}
 }
 
@@ -66,13 +71,13 @@ func (s *KitchenSupervisor) getOrderQueue() priorityqueue.IQueue {
 	return s.queue
 }
 
-func (s *KitchenSupervisor) prepareOrder(order dto.Order) {
+func (s *KitchenSupervisor) prepareOrder(order dto.Order, ctx context.Context) {
 	logger.LogMessageF("Preparing order %v", order.OrderID)
 
-	itemChan := make(chan int, 1)
+	itemChan := make(chan struct{})
 
-	for idx, val := range order.Items {
-		go s.prepareItem(s.foods[val], idx, itemChan)
+	for _, val := range order.Items {
+		go s.prepareItem(s.foods[val], itemChan, ctx)
 	}
 
 	for len(order.Items) > 0 {
@@ -80,25 +85,29 @@ func (s *KitchenSupervisor) prepareOrder(order dto.Order) {
 
 		order.Items = order.Items[:len(order.Items)-1] // If we received a signal - pop 1 item
 	}
+
+	gateway.Distribute(&order)
 }
 
-func (s *KitchenSupervisor) prepareItem(item entity.Food, itemIdx int, itemChan chan<- int){
-	var currCook *cook.Cook
+// prepareItem is a goroutine function which performs infinite search for cook and after this - prepares item
+func (s *KitchenSupervisor) prepareItem(item entity.Food, itemChan chan<- struct{}, ctx context.Context) {
+	var currCook *cook.Cook		// Holder for cook
 
-	for currCook == nil {
-		currCook = s.findCook(item.Complexity)
-		time.Sleep(time.Second)		// Every second try to find a cook
+	for currCook == nil{
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second): // Wait 1 second before searching for next cook
+			currCook = s.findCook(item.Complexity)
+		}
 	}
+	currCook.Prepare(item, itemChan, ctx)	// Immediately start preparing
 
-	cookID := currCook.GetID()
-	logger.LogCookF(cookID, "Preparing item %d", item.ID)
-
-	currCook.Prepare(item, itemIdx, itemChan)
-
-	logger.LogCookF(cookID, "Item %d is ready", item.ID)
+	logger.LogCookF(currCook.GetID(), "item %d is ready", item.ID)
 }
 
-func (s *KitchenSupervisor) findCook(rankReq int) *cook.Cook{
+// findCook goes through array of cooks once and return first cook with minimum required rank. nil if no cook found
+func (s *KitchenSupervisor) findCook(rankReq int) *cook.Cook {
 	s.cooksMutex.Lock()
 	defer s.cooksMutex.Unlock()
 	for idx, _ := range s.cooks {
@@ -108,8 +117,3 @@ func (s *KitchenSupervisor) findCook(rankReq int) *cook.Cook{
 	}
 	return nil
 }
-
-
-
-
-

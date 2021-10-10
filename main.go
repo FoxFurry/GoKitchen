@@ -1,26 +1,43 @@
 package main
 
 import (
+	"context"
 	"github.com/foxfurry/go_kitchen/application"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/config"
+	"github.com/foxfurry/go_kitchen/internal/infrastracture/gui"
+	"github.com/foxfurry/go_kitchen/internal/infrastracture/logger"
 	"github.com/foxfurry/go_kitchen/internal/infrastracture/profiler"
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/gin-gonic/gin"
 )
 
-func init(){
+func init() {
+	gin.SetMode(gin.ReleaseMode)
+
 	config.LoadConfig()
 }
 
-func main(){
-	profiler.StartProfiler()
+func main() {
+	ctx, cancel := context.WithCancel(context.Background())
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	kitchenUI := gui.NewKitchenCUI()
 
-	app := application.CreateApp()
+	gui.AppMode = gui.CMDMode
+	ok := kitchenUI.Create()
+	if ok {
+		gui.AppMode = gui.CUIMode
+	}
+
+	app := application.Create(ctx)
 	go app.Start()
+	go profiler.Start(ctx)
+	go kitchenUI.Start(ctx, cancel)
 
-	<-sigChan
+	for{
+		select {
+		case data := <-logger.LogChannel:
+			kitchenUI.AddLog(data)
+		case <-ctx.Done():
+			return
+		}
+	}
 }
