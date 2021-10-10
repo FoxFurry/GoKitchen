@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"github.com/foxfurry/go_kitchen/internal/domain/dto"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
 	"github.com/foxfurry/go_kitchen/internal/http/httperr"
@@ -16,7 +17,7 @@ type IController interface {
 	menu(c *gin.Context)
 	order(c *gin.Context)
 	RegisterKitchenRoutes(c *gin.Engine)
-	Initialize()
+	Initialize(ctx context.Context)
 }
 
 type KitchenController struct {
@@ -29,8 +30,8 @@ func NewKitchenController() IController {
 	}
 }
 
-func (ctrl *KitchenController) Initialize(){
-	ctrl.super.Initialize()
+func (ctrl *KitchenController) Initialize(ctx context.Context){
+	ctrl.super.Initialize(ctx)
 }
 
 func (ctrl *KitchenController) menu(c *gin.Context){
@@ -50,25 +51,8 @@ func (ctrl *KitchenController) order(c *gin.Context){
 		return
 	}
 
-
 	logger.LogMessageF("Got a new order: %v", currentOrder.Items)
 	ctrl.super.AddOrder(currentOrder)
 
 	return
 }
-
-/*
-logger.LogMessageF("Order %v completed", currentOrder.OrderID)
-
-	resp := dto.Distribution{}
-	resp.TableID = currentOrder.TableID
-
-	jsonBody, err := json.Marshal(resp)
-	if err != nil {
-		log.Panic(err)
-	}
-	contentType := "application/json"
-
-	http.Post(viper.GetString("dining_host") + "/distribution", contentType, bytes.NewReader(jsonBody))
-
- */

@@ -32,10 +32,11 @@ var (
 
 	prefixCook = "[COOK-%d] "
 	prefixSuper = "[SPR] "
+
+	LogChannel = make(chan string, 50)
 )
 
-
-func logCustomf(clr *color.Color, prefix string, postLog func(), level logLevel, format string, items ...interface{}){
+func logCustomF(clr *color.Color, prefix string, postLog func(), level logLevel, format string, items ...interface{}){
 	if level <= logLevel(viper.GetInt("log_level")) {
 		var data string
 		if len(items) == 0 {
@@ -44,39 +45,41 @@ func logCustomf(clr *color.Color, prefix string, postLog func(), level logLevel,
 			data = fmt.Sprintf(format, items...)
 		}
 
-		clr.Print(prefix + data + "\n")
+		logData := prefix + data
+		LogChannel <- logData
+
 		if postLog != nil {
 			postLog()
 		}
 	}
 }
 
-func LogPanicf(format string, items ...interface{}){
-	logCustomf(colorPanic, prefixPanic, func(){ panic(format) }, logPanic, format, items...)
+func LogPanicF(format string, items ...interface{}){
+	logCustomF(colorPanic, prefixPanic, func(){ panic(format) }, logPanic, format, items...)
 }
 
 func LogErrorF(format string, items ...interface{}){
-	logCustomf(colorError, prefixError, func(){os.Exit(1)}, logError, format, items...)
+	logCustomF(colorError, prefixError, func(){os.Exit(1)}, logError, format, items...)
 }
 
 func LogWarningF(format string, items ...interface{}) {
-	logCustomf(colorWarning, prefixWarning, nil, logWarning, format, items...)
+	logCustomF(colorWarning, prefixWarning, nil, logWarning, format, items...)
 }
 
 func LogMessageF(format string, items ...interface{}) {
-	logCustomf(colorMessage, prefixMessage, nil, logMessage, format, items...)
+	logCustomF(colorMessage, prefixMessage, nil, logMessage, format, items...)
 }
 
 func LogCookF(id int, format string, items ...interface{}){
-	logCustomf(colorCook, fmt.Sprintf(prefixCook, id), nil, logMessage, format, items...)
+	logCustomF(colorCook, fmt.Sprintf(prefixCook, id), nil, logMessage, format, items...)
 }
 
 func LogSuperF(format string, items ...interface{}){
-	logCustomf(colorSuper, prefixSuper, nil, logMessage, format, items...)
+	logCustomF(colorSuper, prefixSuper, nil, logMessage, format, items...)
 }
 
 func LogPanic(format string){
-	LogPanicf(format, nil...)
+	LogPanicF(format, nil...)
 }
 
 func LogError(format string){
