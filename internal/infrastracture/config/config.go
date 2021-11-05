@@ -12,6 +12,6 @@ func LoadConfig(){
 	viper.SetConfigType("json")
 
 	if err := viper.ReadInConfig(); err != nil {
-		logger.LogPanicf("Could not read config file: %v", err)
+		logger.LogPanicF("Could not read config file: %v", err)
 	}
 }

@@ -3,7 +3,7 @@ package dto
 import "time"
 
 type Order struct {
-	OrderID int   `json:"order_id"`
+	ClientID int `json:"client_id"`
 	TableID int `json:"table_id"`
 	WaiterID int `json:"waiter_id"`
 	Items   []int `json:"items"`

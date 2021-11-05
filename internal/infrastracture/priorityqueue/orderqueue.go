@@ -44,7 +44,7 @@ func (o *orderQueue) Push(x dto.Order){
 }
 
 func (o *orderQueue) Pop() dto.Order{
-	return heap.Pop(&o.pq).(*Item).Order
+	return heap.Pop(&o.pq).(*item).Order
 }
 
 func (o *orderQueue) Remove(i int) dto.Order{
@@ -52,7 +52,7 @@ func (o *orderQueue) Remove(i int) dto.Order{
 	if i >= n {
 		logger.LogErrorF("Trying to access order #%d with max len of #%d", n, i)
 	}
-	return heap.Remove(&o.pq, i).(*Item).Order
+	return heap.Remove(&o.pq, i).(*item).Order
 }
 
 func (o *orderQueue) Check(i int) dto.Order {
