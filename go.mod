@@ -6,7 +6,6 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/gin-gonic/gin v1.7.4
 	github.com/gizak/termui/v3 v3.1.0
-	github.com/jroimartin/gocui v0.5.0
 	github.com/spf13/viper v1.9.0
 )
 

@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/foxfurry/go_kitchen/internal/domain/entity"
 	"github.com/foxfurry/go_kitchen/internal/domain/repository"
+	"github.com/foxfurry/go_kitchen/internal/service/cook"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
+	"github.com/spf13/viper"
 	"math/rand"
 	"strconv"
 )
@@ -13,13 +15,13 @@ import (
 type ICUI interface {
 	Create() bool
 	Start(ctx context.Context, cancel context.CancelFunc)
-	AddLog(data string)
+	AddLogData(data string)
+	AddCookData(cookNum int, cookData []cook.CookSlot)
 }
 
 type CookCUI struct {
 	progress []*widgets.Gauge
 	header *widgets.Paragraph
-	catchPhrase *widgets.Paragraph
 	items *widgets.List
 }
 
@@ -27,6 +29,7 @@ type kitchenCUI struct {
 	logs *widgets.List
 	header *widgets.Paragraph
 	tabs *widgets.TabPane
+	orders *widgets.List
 	cooks []*CookCUI
 }
 
@@ -39,6 +42,7 @@ const (
 
 var (
 	AppMode = CMDMode
+	lastGaugeY int
 )
 
 const (
@@ -51,19 +55,20 @@ const (
 	cookHeaderYStart = tabYEnd + 1
 	cookHeaderYEnd = cookHeaderYStart + 1
 
-	cookCatchPhraseYStart = cookHeaderYEnd + 1
-	cookCatchPhraseYEnd = cookCatchPhraseYStart + 1
-
-	logView   = "log"
-	logYStart = tabYEnd + 2
+	logView   = "Current Logs"
+	logYStart = tabYEnd + 3
+	logX = 0.7
 
 	gaugeYStart = logYStart
 	gaugeYSize = 4
-	gaugeYGap = 1
-	gaugeX = 0.7
+	gaugeX = logX
 
-	itemsYStart = logYStart
-	itemsXStart = gaugeX + 0.01
+	orderYStart = logYStart
+	orderXStart = logX + 0.01
+
+	itemsYStart = logX
+	itemsXStart = 0
+	itemsX = gaugeX
 )
 
 func NewKitchenCUI() ICUI {
@@ -73,6 +78,10 @@ func NewKitchenCUI() ICUI {
 }
 
 func (k *kitchenCUI) Create() bool{
+	if !viper.GetBool("enable_cui") {
+		return false
+	}
+
 	cooks := repository.GetCooks()
 
 	if err := ui.Init(); err != nil {
@@ -82,6 +91,7 @@ func (k *kitchenCUI) Create() bool{
 	k.logs = buildLogWidget()
 	k.header = buildHeaderWidget()
 	k.tabs = buildTabPane(len(cooks))
+	k.orders = buildOrderWidget()
 
 	for _, val := range cooks {
 		k.cooks = append(k.cooks, buildCookCUI(val))
@@ -116,16 +126,26 @@ func (k *kitchenCUI) Start(ctx context.Context, cancel context.CancelFunc) {
 	}
 }
 
-func (k *kitchenCUI) AddLog(data string) {
+func (k *kitchenCUI) AddLogData(data string) {
 	k.logs.Rows = append(k.logs.Rows, data)
 	k.logs.ScrollBottom()
 	k.render()
 }
 
+func (k *kitchenCUI) AddCookData(cookNum int, cookData []cook.CookSlot){
+	k.updateCook(cookNum, cookData)
+}
+
+func (k *kitchenCUI) updateCook(cookNum int, cookData []cook.CookSlot){
+	for idx, _ := range k.cooks[cookNum].progress {
+		k.cooks[cookNum].progress[idx].Percent = cookData[idx].Progress	// Update all gauges
+	}
+}
+
 func (k *kitchenCUI) render(){
 	ui.Clear()
 	ui.Render(k.header, k.tabs)
-
+	ui.Render(k.orders)
 	switch k.tabs.ActiveTabIndex {
 	case 0:
 		ui.Render(k.logs)
@@ -136,7 +156,6 @@ func (k *kitchenCUI) render(){
 
 func (c *CookCUI) Render(){
 	ui.Render(c.header)
-	ui.Render(c.catchPhrase)
 	ui.Render(c.items)
 	for idx, _ := range c.progress{
 		ui.Render(c.progress[idx])
@@ -147,9 +166,19 @@ func buildLogWidget() *widgets.List {
 	maxX, maxY := ui.TerminalDimensions()
 	view := widgets.NewList()
 	view.Title = logView
+	view.WrapText = true
+
+	view.SetRect(0, logYStart, int(float64(maxX)*logX), maxY)
+	return view
+}
+
+func buildOrderWidget() *widgets.List {
+	maxX, maxY := ui.TerminalDimensions()
+	view := widgets.NewList()
+	view.Title = "Current Orders"
 	view.WrapText = false
 
-	view.SetRect(0, logYStart, maxX-1, maxY-1)
+	view.SetRect(int(float64(maxX)*orderXStart), orderYStart, maxX, maxY)
 	return view
 }
 
@@ -160,7 +189,7 @@ func buildHeaderWidget() *widgets.Paragraph {
 	header.Text = "Press q (C^c) to quit. Press h or l to switch tabs"
 	header.Border = false
 
-	header.SetRect(0, headerYStart, maxX-1, headerYEnd)
+	header.SetRect(0, headerYStart, maxX, headerYEnd)
 
 	return header
 }
@@ -171,7 +200,7 @@ func buildTabPane(cooksNum int) *widgets.TabPane {
 	tab := widgets.NewTabPane()
 	tab.Border=true
 
-	tabsNames := []string{"Logs"}
+	tabsNames := []string{"logs"}
 
 	for idx := 0; idx < cooksNum; idx++ {
 		tabsNames = append(tabsNames, "cook #" + strconv.Itoa(idx + 1))
@@ -185,33 +214,20 @@ func buildTabPane(cooksNum int) *widgets.TabPane {
 
 func buildCookCUI(cook entity.Cook) *CookCUI {
 	return &CookCUI{
-		progress:    buildBarsGauge(cook.Proficiency),
-		header:      buildBarHeader(cook.Name),
-		catchPhrase: buildBarCatch(cook.CatchPhrase),
-		items:       buildBarItems(cook.Proficiency),
+		progress: buildBarsGauge(cook.Proficiency),
+		header:   buildBarHeader(cook.Name, cook.CatchPhrase),
+		items:    buildBarItems(cook.Proficiency),
 	}
 }
 
-func buildBarHeader(cookName string) *widgets.Paragraph {
+func buildBarHeader(cookName, cookCatch string) *widgets.Paragraph {
 	maxX, _ := ui.TerminalDimensions()
 
 	header := widgets.NewParagraph()
-	header.Text = cookName
+	header.Text = cookName + " | " + cookCatch
 	header.Border = false
 
-	header.SetRect(0, cookHeaderYStart, maxX-1, cookHeaderYEnd)
-
-	return header
-}
-
-func buildBarCatch(catchPhrase string)  *widgets.Paragraph{
-	maxX, _ := ui.TerminalDimensions()
-
-	header := widgets.NewParagraph()
-	header.Text = catchPhrase
-	header.Border = false
-
-	header.SetRect(0, cookCatchPhraseYStart, maxX-1, cookCatchPhraseYEnd)
+	header.SetRect(0, cookHeaderYStart, maxX, cookHeaderYEnd)
 
 	return header
 }
@@ -226,11 +242,12 @@ func buildBarsGauge(proficiency int) []*widgets.Gauge {
 		tmp.Title = "Item #" + strconv.Itoa(idx)
 		tmp.Percent = rand.Int()%100
 
-		tmp.BarColor = ui.ColorBlack
-		tmp.LabelStyle = ui.NewStyle(ui.ColorWhite)
-		tmpStart := gaugeYStart + gaugeYSize*idx + gaugeYGap
+		tmp.BarColor = ui.ColorRed
+		tmp.LabelStyle = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
+		tmpStart := gaugeYStart + gaugeYSize*idx
 		tmp.SetRect(0, tmpStart, int(float64(maxX)*gaugeX), tmpStart+gaugeYSize)
 
+		lastGaugeY = tmpStart+ gaugeYSize
 		result = append(result, tmp)
 	}
 
@@ -249,7 +266,7 @@ func buildBarItems(proficiency int) *widgets.List{
 
 	items.Rows = itemsRows
 
-	items.SetRect(int(float32(maxX)*itemsXStart), itemsYStart, maxX-1, maxY-1)
+	items.SetRect(int(float32(maxX)*itemsXStart), lastGaugeY, int(float64(maxX)*itemsX), maxY)
 
 	return items
 }

@@ -1,5 +1,13 @@
 {
   "log_level": 3,
   "kitchen_host": ":8081",
-  "dining_host": "http://localhost:8080"
+  "dining_host": "localhost:8080",
+  "aggregator_host": "localhost:8082",
+  "delivery_host": "localhost:8083",
+  "enable_cui": false,
+  "version": 2,
+
+  "dial_timeout": 5,
+
+  "restaurant_name": "Bruh"
 }

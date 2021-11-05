@@ -51,7 +51,6 @@ func (ctrl *KitchenController) order(c *gin.Context){
 		return
 	}
 
-	logger.LogMessageF("Got a new order: %v", currentOrder.Items)
 	ctrl.super.AddOrder(currentOrder)
 
 	return
